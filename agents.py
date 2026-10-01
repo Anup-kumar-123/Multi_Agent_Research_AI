@@ -1,12 +1,11 @@
 import os
 from dotenv import load_dotenv
-from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain.agents import create_agent
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from tools import scrape_url, web_query
 
-# Load environment variables
 load_dotenv()
 
 # Initialize LLM
@@ -15,22 +14,19 @@ LLM = ChatGoogleGenerativeAI(
     temperature=0
 )
 
-# Base Agent Prompt Template
-agent_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are a helpful research assistant."),
-    ("placeholder", "{messages}"),
-    ("placeholder", "{agent_scratchpad}"),
-])
-
 # Building the Search Agent
 def build_search_agent():
-    agent = create_tool_calling_agent(LLM, [web_query], agent_prompt)
-    return AgentExecutor(agent=agent, tools=[web_query])
+    return create_agent(
+        model=LLM,
+        tools=[web_query]
+    )
 
 # Building the Reader Agent
 def build_reader_agent():
-    agent = create_tool_calling_agent(LLM, [scrape_url], agent_prompt)
-    return AgentExecutor(agent=agent, tools=[scrape_url])
+    return create_agent(
+        model=LLM,
+        tools=[scrape_url]
+    )
 
 # Writer Chain
 writer_prompt = ChatPromptTemplate.from_messages([
