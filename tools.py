@@ -1,9 +1,9 @@
-from langchain_core.tools import tool
+import os
 import requests
 from bs4 import BeautifulSoup
-from tavily import TavilyClient
-import os
 from dotenv import load_dotenv
+from langchain_core.tools import tool
+from tavily import TavilyClient
 
 load_dotenv()
 
@@ -22,27 +22,32 @@ def web_query(user_query: str) -> str:
         max_results=4
     )
 
-    # Extract the actual list of results from the response dictionary
     results = search_response.get("results", [])
 
+    if not results:
+        return "No relevant web results found."
+
     for result in results:
+        title = result.get("title", "No Title")
+        url = result.get("url", "")
+        content = result.get("content", "")[:400]
         Output_results.append(
-            f"Title : {result['title']}\n URL : {result['url']}\n snippet : {result['content'][:400]}\n"
+            f"Title : {title}\n URL : {url}\n snippet : {content}\n"
         )
 
     return "\n---\n".join(Output_results)
 
 
 @tool
-def scrape_url(url : str) -> str:
+def scrape_url(url: str) -> str:
     """
     Scrape and return the clean text content from the given URL for deeper information fetching.
     """
     try:
         response = requests.get(
-            url = url,
-            timeout = 8,
-            headers = {"User-Agent": "Mozilla/5.0"}
+            url=url,
+            timeout=8,
+            headers={"User-Agent": "Mozilla/5.0"}
         )
         soup = BeautifulSoup(response.text, "html.parser")
 
