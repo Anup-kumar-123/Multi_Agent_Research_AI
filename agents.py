@@ -1,31 +1,38 @@
-from langchain.agents import create_agent
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from tools import web_query, scrape_url
-from langchain_google_genai import ChatGoogleGenerativeAI
+import os
 from dotenv import load_dotenv
+from langchain.agents import AgentExecutor, create_tool_calling_agent
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from tools import scrape_url, web_query
 
-# Creating the LLM.
+# Load environment variables
+load_dotenv()
+
+# Initialize LLM
 LLM = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
-    temperature=0  # Fixed
+    temperature=0
 )
 
-# Building the 1st Agent.
+# Base Agent Prompt Template
+agent_prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful research assistant."),
+    ("placeholder", "{messages}"),
+    ("placeholder", "{agent_scratchpad}"),
+])
+
+# Building the Search Agent
 def build_search_agent():
-    return create_agent(
-        model = LLM,
-        tools = [web_query]
-    )
+    agent = create_tool_calling_agent(LLM, [web_query], agent_prompt)
+    return AgentExecutor(agent=agent, tools=[web_query])
 
-# Building the 2nd Agent.
+# Building the Reader Agent
 def build_reader_agent():
-    return create_agent(
-        model = LLM,
-        tools = [scrape_url]
-    )
+    agent = create_tool_calling_agent(LLM, [scrape_url], agent_prompt)
+    return AgentExecutor(agent=agent, tools=[scrape_url])
 
-# Creating the writer chain for the agent.
+# Writer Chain
 writer_prompt = ChatPromptTemplate.from_messages([
     ("system", "You are an expert research writer, write clearly, structured and insightful responses for the user"),
     ("human", """Write a detailed research report on the topic below.
@@ -46,6 +53,7 @@ Be detailed factual and professional""")
 
 writer_chain = writer_prompt | LLM | StrOutputParser()
 
+# Critic Chain
 critic_prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a sharp and constructive research critic. Be honest and specific."),
     ("human", """Review the research report below and evaluate it strictly
